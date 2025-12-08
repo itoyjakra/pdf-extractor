@@ -653,18 +653,18 @@ pdf-extractor/
 
 **Deliverable:** Clean, compilable LaTeX output
 
-### Phase 2: Robustness (IN PROGRESS)
-1. Multi-page Q&A stitching (merge solutions that span pages)
+### Phase 2: Robustness ✅ COMPLETED
+1. ✅ Multi-page Q&A stitching (merge solutions that span pages)
 2. ✅ Multi-part question splitting (already working in MVP)
-3. Figure extraction and saving
+3. ✅ Figure extraction (embedded images + vector drawings)
 
 **Deliverable:** Handles complex documents
 
-### Phase 3: Quality Assurance
-1. Evaluation pipeline
-2. Cross-reference resolution validation
-3. Human review interface
-4. Quality metrics and reporting
+### Phase 3: Quality Assurance ✅ COMPLETED
+1. ✅ Evaluation pipeline (`src/evaluator.py`)
+2. ✅ Cross-reference resolution validation (answer similarity, remaining refs check)
+3. ✅ Human review interface (`src/reviewer.py`)
+4. ✅ Quality metrics and reporting (JSON reports, CLI output)
 
 **Deliverable:** Production-ready with quality guarantees
 

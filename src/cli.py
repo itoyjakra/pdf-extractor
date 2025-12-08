@@ -164,6 +164,106 @@ def figures(
 
 
 @app.command()
+def evaluate(
+    output_dir: Path = typer.Argument(
+        ...,
+        help="Directory containing extraction results (extracted_qas.json)"
+    ),
+):
+    """Evaluate extraction quality.
+
+    Checks LaTeX compilation, remaining cross-references, and answer changes.
+    Generates an evaluation report with pass/fail status and review priorities.
+    """
+    from .evaluator import Evaluator
+    from .schemas import ExtractionResult
+    import json
+
+    json_path = output_dir / "extracted_qas.json"
+    if not json_path.exists():
+        console.print(f"[red]Error: {json_path} not found[/red]")
+        raise typer.Exit(1)
+
+    # Load extracted Q&As
+    with open(json_path) as f:
+        data = json.load(f)
+
+    qas = [
+        ExtractionResult(
+            id=q["id"],
+            question_latex=q["question_latex"],
+            answer_latex=q["answer_latex"],
+            figures=q.get("figures", []),
+            page_range=tuple(q["page_range"])
+        )
+        for q in data["questions"]
+    ]
+
+    # Load resolution results if available
+    resolution_path = output_dir / "resolution_results.json"
+    resolution_results = None
+    if resolution_path.exists():
+        with open(resolution_path) as f:
+            resolution_results = json.load(f)
+
+    console.print(f"[bold]Evaluating {len(qas)} Q&A pairs...[/bold]")
+
+    evaluator = Evaluator(output_dir / "evaluation")
+    report = evaluator.evaluate_extraction(qas, resolution_results)
+
+    # Save report
+    report_path = output_dir / "evaluation_report.json"
+    evaluator.save_report(report, report_path)
+    console.print(f"Saved report to: {report_path}")
+
+    # Print summary
+    evaluator.print_report(report)
+
+    if report.failed > 0:
+        console.print(f"\n[yellow]⚠ {report.failed} Q&As failed evaluation[/yellow]")
+    else:
+        console.print("\n[green]✓ All Q&As passed evaluation[/green]")
+
+
+@app.command()
+def review(
+    output_dir: Path = typer.Argument(
+        ...,
+        help="Directory containing extraction results"
+    ),
+    priority: str = typer.Option(
+        "all",
+        "--priority", "-p",
+        help="Filter: 'all', 'failed', 'high', 'medium'"
+    ),
+    sample_rate: float = typer.Option(
+        1.0,
+        "--sample", "-s",
+        help="Fraction of Q&As to sample (0.0 to 1.0)"
+    ),
+):
+    """Interactively review extracted Q&A pairs.
+
+    Displays each Q&A for human review and collects accept/reject decisions.
+    Reviews are saved to reviews.json in the output directory.
+    """
+    from .reviewer import Reviewer
+
+    try:
+        reviewer = Reviewer(output_dir)
+    except FileNotFoundError as e:
+        console.print(f"[red]Error: {e}[/red]")
+        raise typer.Exit(1)
+
+    reviews = reviewer.run_review_session(priority, sample_rate)
+
+    if reviews:
+        review_path = reviewer.save_reviews()
+        console.print(f"\nSaved reviews to: {review_path}")
+        reviewer.print_summary()
+
+
+@app.command()
 def version():
     """Show version information."""
     console.print("pdf-extractor v0.1.0")
