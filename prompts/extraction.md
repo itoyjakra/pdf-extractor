@@ -57,6 +57,28 @@ For multi-part questions, include each part separately:
 - Include solution markers like "Solution." in the answer_latex
 - If you see a figure/diagram, note it in the text as "[Figure: ...]" but don't try to recreate it
 
+## CRITICAL: LaTeX Math Mode Rules
+
+ALL mathematical content MUST be wrapped in math mode (`$...$` for inline or `$$...$$` for display). This includes:
+
+1. **Variables and symbols**: `$x$`, `$f$`, `$C$`, `$P$`
+2. **Set notation**: `$\{x \mid x > 0\}$` NOT `{x | x > 0}`
+3. **Operators**: `$\leq$`, `$\geq$`, `$\in$`, `$\neq$` - NEVER use unicode ≤, ≥, ∈, ≠
+4. **Function notation**: `$f(x)$`, `$P(C)$`, `$\text{dom } f$`
+5. **Subscripts/superscripts**: `$x_1$`, `$x^T$`, `$\mathbb{R}^n$`
+
+**WRONG examples** (will cause LaTeX errors):
+- `the set {x | f(x) ≤ 0}` → Missing math mode and unicode
+- `where f ∈ C` → Missing math mode and unicode
+- `for all x ∈ dom f` → Missing math mode
+
+**CORRECT examples**:
+- `the set $\{x \mid f(x) \leq 0\}$`
+- `where $f \in C$`
+- `for all $x \in \text{dom } f$`
+
+Use `\mid` for "such that" in set notation, NOT `|`. Use `\leq`, `\geq`, `\in`, `\neq` for comparison/set operators, NEVER unicode characters.
+
 ## CRITICAL: Handling Question Parts Across Pages
 
 When you see lettered parts like (b), (c), (d) at the TOP of a page WITHOUT a preceding question number on that same page:

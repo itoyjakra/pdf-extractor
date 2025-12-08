@@ -31,6 +31,11 @@ def extract(
         "--no-resolve",
         help="Skip cross-reference resolution"
     ),
+    compile_pdf: bool = typer.Option(
+        False,
+        "--compile",
+        help="Compile LaTeX to PDF after extraction"
+    ),
 ):
     """Extract Q&A pairs from a PDF document.
 
@@ -81,6 +86,28 @@ def extract(
         # Success summary
         console.print("\n[green]✓ Extraction complete![/green]")
         console.print(f"  Total Q&A pairs: {len(extraction.questions)}")
+
+        # Compile PDF if requested
+        if compile_pdf:
+            from .latex_generator import LaTeXGenerator
+            latex_gen = LaTeXGenerator()
+            out_dir = output_dir or Path("./output")
+            tex_path = out_dir / "extracted_qas.tex"
+
+            console.print("\n[bold]Compiling LaTeX to PDF...[/bold]")
+            result = latex_gen.compile_latex(tex_path)
+
+            if result.success:
+                console.print(f"[green]✓ PDF generated: {result.pdf_path}[/green]")
+            else:
+                console.print(f"[yellow]⚠ PDF generated with errors[/yellow]")
+
+            if result.errors:
+                console.print(f"  [red]Errors ({len(result.errors)}):[/red]")
+                for err in result.errors[:5]:  # Show first 5
+                    console.print(f"    {err}")
+                if len(result.errors) > 5:
+                    console.print(f"    ... and {len(result.errors) - 5} more")
 
     except Exception as e:
         console.print(f"[red]Error during extraction: {e}[/red]")
