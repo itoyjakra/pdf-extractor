@@ -57,6 +57,16 @@ For multi-part questions, include each part separately:
 - Include solution markers like "Solution." in the answer_latex
 - If you see a figure/diagram, note it in the text as "[Figure: ...]" but don't try to recreate it
 
+## CRITICAL: Handling Question Parts Across Pages
+
+When you see lettered parts like (b), (c), (d) at the TOP of a page WITHOUT a preceding question number on that same page:
+1. These are CONTINUATIONS of a multi-part question from the previous page
+2. Look at the "Context from Previous Page" section (if provided) to find the correct question ID
+3. Do NOT assign them to a different question number that appears later on this page
+4. The question number for these parts should be the LAST question ID from the previous page
+
+Example: If the previous page ended with question 2.17a, and this page starts with "(b) The hyperplane...", that is question 2.17b, NOT 2.18b.
+
 ## Example
 
 For a page showing:

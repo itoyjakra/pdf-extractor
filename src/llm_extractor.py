@@ -27,18 +27,40 @@ class LLMExtractor:
 
         self.prompt_template = prompt_path.read_text()
 
-    def extract_page(self, image: Image.Image, page_number: int) -> PageExtraction:
+    def extract_page(
+        self,
+        image: Image.Image,
+        page_number: int,
+        previous_page_context: Optional[dict] = None
+    ) -> PageExtraction:
         """Extract Q&A pairs from a single page image.
 
         Args:
             image: Page image
             page_number: Page number (1-indexed)
+            previous_page_context: Optional context from previous page extraction
 
         Returns:
             PageExtraction with all questions found
         """
+        # Build prompt with context if available
+        prompt = self.prompt_template
+        if previous_page_context:
+            context_info = f"""
+## Context from Previous Page
+
+The previous page contained these questions:
+{previous_page_context.get('questions_summary', 'None')}
+
+IMPORTANT: If you see question parts (b), (c), (d), etc. at the start of this page WITHOUT a question number, they are CONTINUATIONS of the last question from the previous page ({previous_page_context.get('last_question_id', 'unknown')}). Assign them to that question ID, NOT to a new question number that appears later on this page.
+
+---
+
+"""
+            prompt = context_info + prompt
+
         # Get LLM response
-        response = self.llm.extract_from_image(image, self.prompt_template)
+        response = self.llm.extract_from_image(image, prompt)
 
         # Parse JSON response
         try:

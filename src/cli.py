@@ -26,11 +26,17 @@ def extract(
         "--provider", "-p",
         help="LLM provider: 'openai' or 'anthropic'"
     ),
+    no_resolve: bool = typer.Option(
+        False,
+        "--no-resolve",
+        help="Skip cross-reference resolution"
+    ),
 ):
     """Extract Q&A pairs from a PDF document.
 
     Processes the PDF page by page, extracting questions and answers using
-    vision LLM, and outputs both JSON and LaTeX formats.
+    vision LLM, and outputs both JSON and LaTeX formats. Cross-references
+    are automatically resolved to make Q&As self-contained.
     """
     # Validate PDF exists
     if not pdf_path.exists():
@@ -58,16 +64,18 @@ def extract(
         raise typer.Exit(1)
 
     # Show config
+    resolve_refs = not no_resolve
     console.print(Panel.fit(
         f"[bold]PDF:[/bold] {pdf_path}\n"
         f"[bold]Provider:[/bold] {settings.default_provider}\n"
-        f"[bold]Output:[/bold] {output_dir or './output'}",
+        f"[bold]Output:[/bold] {output_dir or './output'}\n"
+        f"[bold]Resolve refs:[/bold] {'Yes' if resolve_refs else 'No'}",
         title="Extraction Configuration"
     ))
 
     try:
         # Run pipeline
-        pipeline = ExtractionPipeline(settings)
+        pipeline = ExtractionPipeline(settings, resolve_references=resolve_refs)
         extraction = pipeline.process_pdf(pdf_path, output_dir)
 
         # Success summary

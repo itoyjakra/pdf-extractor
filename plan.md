@@ -635,14 +635,23 @@ pdf-extractor/
 
 **Deliverable:** Can extract Q&A from simple pages
 
-### Phase 1.5: Cross-Reference Resolution
-1. Implement reference detection with regex patterns
-2. Create LLM-based resolution prompt
-3. Build CrossReferenceResolver class
-4. Integrate into pipeline between extraction and output
-5. Add resolution tracking for evaluation
+### Phase 1.5: Cross-Reference Resolution ✅ COMPLETED
+1. ✅ Implement reference detection with LLM (more accurate than regex)
+2. ✅ Create LLM-based resolution prompt
+3. ✅ Build CrossReferenceResolver class
+4. ✅ Integrate into pipeline between extraction and output
+5. ✅ Add resolution tracking for evaluation
+6. ✅ Fix multi-page question part detection (pass context between pages)
+7. ✅ Add Q&A sorting (parent questions before sub-parts)
 
 **Deliverable:** Self-contained Q&A pairs suitable for LLM fine-tuning
+
+### Phase 1.6: LaTeX Output Improvements (TODO)
+1. Add unicode-to-LaTeX conversion (≤ → \leq, ∈ → \in, etc.)
+2. Validate LaTeX compilation before saving
+3. Auto-fix common LaTeX errors
+
+**Deliverable:** Clean, compilable LaTeX output
 
 ### Phase 2: Robustness
 1. Multi-page handling
