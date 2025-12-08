@@ -115,6 +115,55 @@ def extract(
 
 
 @app.command()
+def figures(
+    pdf_path: Path = typer.Argument(..., help="Path to the PDF file"),
+    output_dir: Optional[Path] = typer.Option(
+        None,
+        "--output", "-o",
+        help="Output directory (default: ./output/figures)"
+    ),
+    min_size: int = typer.Option(
+        50,
+        "--min-size",
+        help="Minimum dimension (pixels) to extract as figure"
+    ),
+):
+    """Extract figures/images from a PDF document.
+
+    Extracts all embedded images from the PDF and saves them to the output directory.
+    Small images (icons, bullets) are filtered out based on min-size.
+    """
+    from .pdf_processor import PDFProcessor
+
+    if not pdf_path.exists():
+        console.print(f"[red]Error: PDF file not found: {pdf_path}[/red]")
+        raise typer.Exit(1)
+
+    out_dir = output_dir or Path("./output")
+    processor = PDFProcessor()
+
+    console.print(f"[bold]Extracting figures from:[/bold] {pdf_path}")
+
+    # Try embedded images first, then vector drawings
+    all_figures = processor.extract_all_figures(pdf_path, out_dir, min_size)
+
+    if not all_figures:
+        console.print("[dim]No embedded images found, checking for vector drawings...[/dim]")
+        all_figures = processor.extract_vector_figures(pdf_path, out_dir)
+
+    total_figures = sum(len(figs) for figs in all_figures.values())
+
+    if total_figures == 0:
+        console.print("[yellow]No figures found in the PDF.[/yellow]")
+    else:
+        console.print(f"\n[green]✓ Extracted {total_figures} figures:[/green]")
+        for page_num, figs in sorted(all_figures.items()):
+            console.print(f"  Page {page_num}: {len(figs)} figures")
+            for fig in figs:
+                console.print(f"    - {fig['figure_id']}: {fig['width']}x{fig['height']} → {fig['path']}")
+
+
+@app.command()
 def version():
     """Show version information."""
     console.print("pdf-extractor v0.1.0")

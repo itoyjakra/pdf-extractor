@@ -9,8 +9,83 @@ from .pdf_processor import PDFProcessor
 from .llm_extractor import LLMExtractor
 from .latex_generator import LaTeXGenerator
 from .reference_resolver import CrossReferenceResolver, ResolutionResult
-from .schemas import DocumentExtraction, ExtractionResult, PageExtraction
+from .schemas import DocumentExtraction, ExtractionResult, PageExtraction, QuestionPart
 from .config import Settings
+
+
+def stitch_multi_page_qas(all_extractions: list[PageExtraction]) -> list[PageExtraction]:
+    """Stitch together Q&As that span multiple pages.
+
+    Finds Q&As marked with continues_next_page=True and merges them with
+    matching continued_from_previous=True entries on subsequent pages.
+
+    Args:
+        all_extractions: List of page extractions in order
+
+    Returns:
+        Modified list with multi-page Q&As merged
+    """
+    if len(all_extractions) < 2:
+        return all_extractions
+
+    # Work on a copy to avoid modifying original
+    result = []
+
+    i = 0
+    while i < len(all_extractions):
+        current_page = all_extractions[i]
+
+        # Check if any Q&A on this page continues to next
+        if i + 1 < len(all_extractions):
+            next_page = all_extractions[i + 1]
+
+            # Find Q&As that need stitching
+            for q_idx, question in enumerate(current_page.questions):
+                for p_idx, part in enumerate(question.parts):
+                    if part.continues_next_page:
+                        # Look for matching continuation on next page
+                        for next_q in next_page.questions:
+                            if next_q.question_id == question.question_id:
+                                for next_p_idx, next_part in enumerate(next_q.parts):
+                                    # Match by part_id (or both None for single-part questions)
+                                    if next_part.continued_from_previous and next_part.part_id == part.part_id:
+                                        # Merge the content
+                                        merged_question = part.question_latex
+                                        if next_part.question_latex and next_part.question_latex != part.question_latex:
+                                            # Only append if there's additional question text
+                                            merged_question += " " + next_part.question_latex
+
+                                        merged_answer = part.answer_latex + "\n\n" + next_part.answer_latex
+
+                                        # Update the current part
+                                        current_page.questions[q_idx].parts[p_idx] = QuestionPart(
+                                            part_id=part.part_id,
+                                            question_latex=merged_question,
+                                            answer_latex=merged_answer,
+                                            figures=part.figures + next_part.figures,
+                                            continues_next_page=next_part.continues_next_page,  # Chain if still continuing
+                                            continued_from_previous=part.continued_from_previous,
+                                        )
+
+                                        # Update page range
+                                        current_page.questions[q_idx].page_range = (
+                                            question.page_range[0],
+                                            next_q.page_range[1]
+                                        )
+
+                                        # Mark the next page's part as merged (remove it)
+                                        next_q.parts[next_p_idx] = None  # type: ignore
+
+                            # Clean up None parts
+                            next_q.parts = [p for p in next_q.parts if p is not None]
+
+                    # Remove empty questions
+                    next_page.questions = [q for q in next_page.questions if q.parts]
+
+        result.append(current_page)
+        i += 1
+
+    return result
 
 
 def parse_qa_id(qa_id: str) -> tuple[float, float, str]:
@@ -130,9 +205,18 @@ class ExtractionPipeline:
 
             print(f"Found {len(extraction.questions)} questions")
 
+        # Stitch multi-page Q&As together
+        stitched_extractions = stitch_multi_page_qas(all_extractions)
+
+        # Count how many were stitched
+        original_count = sum(len(p.questions) for p in all_extractions)
+        stitched_count = sum(len(p.questions) for p in stitched_extractions)
+        if original_count != stitched_count:
+            print(f"\nStitched {original_count - stitched_count} multi-page Q&As")
+
         # Flatten to individual Q&A pairs
         questions = []
-        for page_extraction in all_extractions:
+        for page_extraction in stitched_extractions:
             for question in page_extraction.questions:
                 for part in question.parts:
                     # Build full ID

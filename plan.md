@@ -646,17 +646,17 @@ pdf-extractor/
 
 **Deliverable:** Self-contained Q&A pairs suitable for LLM fine-tuning
 
-### Phase 1.6: LaTeX Output Improvements (TODO)
-1. Add unicode-to-LaTeX conversion (≤ → \leq, ∈ → \in, etc.)
-2. Validate LaTeX compilation before saving
-3. Auto-fix common LaTeX errors
+### Phase 1.6: LaTeX Output Improvements ✅ COMPLETED
+1. ✅ Add unicode-to-LaTeX conversion (90+ symbols)
+2. ✅ Validate LaTeX compilation with --compile CLI flag
+3. ✅ Improve extraction prompt for consistent math mode
 
 **Deliverable:** Clean, compilable LaTeX output
 
-### Phase 2: Robustness
-1. Multi-page handling
-2. Multi-part question splitting (already working in MVP)
-3. Figure extraction and embedding
+### Phase 2: Robustness (IN PROGRESS)
+1. Multi-page Q&A stitching (merge solutions that span pages)
+2. ✅ Multi-part question splitting (already working in MVP)
+3. Figure extraction and saving
 
 **Deliverable:** Handles complex documents
 
