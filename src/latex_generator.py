@@ -183,8 +183,15 @@ class LaTeXGenerator:
             lines.append("\\end{figure}")
             lines.append("")
 
-        # Answer (sanitize unicode)
+        # Answer (sanitize unicode and strip "Solution." prefix if present)
         answer_latex = sanitize_latex(qa.answer_latex)
+        # Remove common solution prefixes
+        answer_latex = answer_latex.strip()
+        if answer_latex.startswith(r"\textbf{Solution.}"):
+            answer_latex = answer_latex[len(r"\textbf{Solution.}"):].strip()
+        elif answer_latex.startswith("Solution."):
+            answer_latex = answer_latex[len("Solution."):].strip()
+
         lines.append("\\textbf{Answer:} " + answer_latex)
         lines.append("")
         lines.append("\\vspace{1em}")

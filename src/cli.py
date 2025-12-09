@@ -36,6 +36,16 @@ def extract(
         "--compile",
         help="Compile LaTeX to PDF after extraction"
     ),
+    no_checkpoint: bool = typer.Option(
+        False,
+        "--no-checkpoint",
+        help="Disable checkpoint saving/loading"
+    ),
+    force_restart: bool = typer.Option(
+        False,
+        "--force-restart",
+        help="Ignore existing checkpoint and start from scratch"
+    ),
 ):
     """Extract Q&A pairs from a PDF document.
 
@@ -70,18 +80,24 @@ def extract(
 
     # Show config
     resolve_refs = not no_resolve
+    enable_checkpoints = not no_checkpoint
     console.print(Panel.fit(
         f"[bold]PDF:[/bold] {pdf_path}\n"
         f"[bold]Provider:[/bold] {settings.default_provider}\n"
         f"[bold]Output:[/bold] {output_dir or './output'}\n"
-        f"[bold]Resolve refs:[/bold] {'Yes' if resolve_refs else 'No'}",
+        f"[bold]Resolve refs:[/bold] {'Yes' if resolve_refs else 'No'}\n"
+        f"[bold]Checkpoints:[/bold] {'Enabled' if enable_checkpoints else 'Disabled'}",
         title="Extraction Configuration"
     ))
 
     try:
         # Run pipeline
-        pipeline = ExtractionPipeline(settings, resolve_references=resolve_refs)
-        extraction = pipeline.process_pdf(pdf_path, output_dir)
+        pipeline = ExtractionPipeline(
+            settings,
+            resolve_references=resolve_refs,
+            enable_checkpoints=enable_checkpoints
+        )
+        extraction = pipeline.process_pdf(pdf_path, output_dir, force_restart=force_restart)
 
         # Success summary
         console.print("\n[green]✓ Extraction complete![/green]")

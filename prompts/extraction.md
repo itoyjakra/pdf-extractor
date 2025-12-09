@@ -54,7 +54,7 @@ For multi-part questions, include each part separately:
 - Mark `continues_next_page: true` if the solution is incomplete and continues on the next page
 - Mark `continued_from_previous: true` if this appears to be a continuation from a previous page
 - Preserve ALL LaTeX formatting: `\textbf{}`, `\mathbb{}`, `\sum`, `\int`, equations, etc.
-- Include solution markers like "Solution." in the answer_latex
+- Include solution markers like "Solution." in the answer_latex (will be converted to "Answer:" in final output)
 - If you see a figure/diagram, note it in the text as "[Figure: ...]" but don't try to recreate it
 
 ## CRITICAL: LaTeX Math Mode Rules

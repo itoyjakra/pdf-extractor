@@ -11,6 +11,7 @@ from .latex_generator import LaTeXGenerator
 from .reference_resolver import CrossReferenceResolver, ResolutionResult
 from .schemas import DocumentExtraction, ExtractionResult, PageExtraction, QuestionPart
 from .config import Settings
+from .checkpoint import Checkpoint
 
 
 def stitch_multi_page_qas(all_extractions: list[PageExtraction]) -> list[PageExtraction]:
@@ -129,15 +130,17 @@ def sort_qa_list(questions: list[ExtractionResult]) -> list[ExtractionResult]:
 class ExtractionPipeline:
     """Orchestrates the full PDF Q&A extraction pipeline."""
 
-    def __init__(self, settings: Settings, resolve_references: bool = True):
+    def __init__(self, settings: Settings, resolve_references: bool = True, enable_checkpoints: bool = True):
         """Initialize pipeline.
 
         Args:
             settings: Application settings
             resolve_references: Whether to resolve cross-references
+            enable_checkpoints: Whether to enable checkpoint saving/loading
         """
         self.settings = settings
         self.resolve_references = resolve_references
+        self.enable_checkpoints = enable_checkpoints
         self.pdf_processor = PDFProcessor(dpi=settings.dpi)
         self.llm_extractor = LLMExtractor.from_settings(settings)
         self.latex_generator = LaTeXGenerator()
@@ -146,13 +149,15 @@ class ExtractionPipeline:
     def process_pdf(
         self,
         pdf_path: Path,
-        output_dir: Optional[Path] = None
+        output_dir: Optional[Path] = None,
+        force_restart: bool = False
     ) -> DocumentExtraction:
         """Process a PDF and extract all Q&A pairs.
 
         Args:
             pdf_path: Path to input PDF
             output_dir: Output directory (defaults to settings.output_dir)
+            force_restart: If True, ignore existing checkpoint and start from scratch
 
         Returns:
             Complete document extraction
@@ -164,15 +169,49 @@ class ExtractionPipeline:
 
         print(f"Processing PDF: {pdf_path}")
 
+        # Setup checkpoint
+        checkpoint_path = output_dir / ".checkpoint.json"
+        checkpoint = Checkpoint(checkpoint_path)
+
         # Get page count
         total_pages = self.pdf_processor.get_page_count(pdf_path)
         print(f"Total pages: {total_pages}")
 
-        # Process each page with context passing
+        # Check for existing checkpoint
+        start_page = 1
         all_extractions: list[PageExtraction] = []
         previous_page_context: dict | None = None
 
-        for page_num in range(1, total_pages + 1):
+        if self.enable_checkpoints and checkpoint.exists() and not force_restart:
+            summary = checkpoint.get_summary()
+            print(f"\n{summary}")
+
+            # Ask user if they want to resume
+            response = input("\nResume from checkpoint? [Y/n]: ").strip().lower()
+            if response in ("", "y", "yes"):
+                checkpoint_data = checkpoint.load()
+                if checkpoint_data:
+                    # Verify it's the same PDF
+                    if Path(checkpoint_data["pdf_path"]) != pdf_path.absolute():
+                        print("[WARNING] Checkpoint is for a different PDF, ignoring...")
+                    else:
+                        # Restore state
+                        start_page = checkpoint_data["last_processed_page"] + 1
+                        all_extractions = Checkpoint.restore_page_extractions(checkpoint_data)
+                        previous_page_context = checkpoint_data["previous_page_context"]
+
+                        print(f"Resuming from page {start_page}...")
+
+                        # Update resolve_references setting from checkpoint
+                        if checkpoint_data["resolve_references"] != self.resolve_references:
+                            print(f"[INFO] Using resolve_references={checkpoint_data['resolve_references']} from checkpoint")
+                            self.resolve_references = checkpoint_data["resolve_references"]
+            else:
+                print("Starting from scratch...")
+                checkpoint.delete()
+
+        # Process each page with context passing
+        for page_num in range(start_page, total_pages + 1):
             print(f"Processing page {page_num}/{total_pages}...", end=" ")
 
             # Convert page to image
@@ -204,6 +243,17 @@ class ExtractionPipeline:
                 previous_page_context = None
 
             print(f"Found {len(extraction.questions)} questions")
+
+            # Save checkpoint after each page
+            if self.enable_checkpoints:
+                checkpoint.save(
+                    pdf_path=pdf_path,
+                    total_pages=total_pages,
+                    last_processed_page=page_num,
+                    all_extractions=all_extractions,
+                    previous_page_context=previous_page_context,
+                    resolve_references=self.resolve_references,
+                )
 
         # Stitch multi-page Q&As together
         stitched_extractions = stitch_multi_page_qas(all_extractions)
@@ -304,5 +354,10 @@ class ExtractionPipeline:
         latex_path = output_dir / "extracted_qas.tex"
         self.latex_generator.save_document(doc_extraction, latex_path)
         print(f"Saved LaTeX to: {latex_path}")
+
+        # Delete checkpoint on successful completion
+        if self.enable_checkpoints and checkpoint.exists():
+            checkpoint.delete()
+            print("Checkpoint deleted (extraction complete)")
 
         return doc_extraction
